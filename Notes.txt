@@ -1,0 +1,18 @@
+Cant load until we hit</way>
+if we have EType start, and its a way, then keep reading in new entities until ::end of way
+vector or something to keep track node ids there are in which order. 
+Tags: one way (bool) only true if one way tag and its set to yes
+init speed 25 mph if speed limit tag != 25, update the value
+create a new data type that will be an edge. have index of other node or node id of other node, 
+needs speed limit info and vector of those edges to the node
+for this node, add an edge to this node if its two way, add to both nodes
+array of adjaceny lists
+need both readers to work, cvs writer to save routes
+
+
+Vector 'DNodes' of SNode has 
+DNodeID
+DLat
+DLon
+ per index
+

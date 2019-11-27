@@ -77,7 +77,7 @@ bool CXMLReader::ReadEntity(SXMLEntity &entity, bool skipcdata) {
 	while (!DInput.eof()) {
 		DInput.read(Buffer, sizeof(Buffer));
 		XML_Parse(DParser, Buffer, DInput.gcount(), DInput.eof());
-		std::cout << "@ " << __LINE__ << std::endl;
+		//std::cout << "@ " << __LINE__ << std::endl;
 	}
 
 		entity = DBuffered.front();

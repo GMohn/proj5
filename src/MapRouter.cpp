@@ -49,9 +49,10 @@ bool CMapRouter::LoadMapAndRoutes(std::istream &osm, std::istream &stops, std::i
                 if(Entity.DNameData == "node"){
                     auto ID = std::stoul(Entity.AttributeValue("id"));
                     double Latitude = std::stod(Entity.AttributeValue("lat"));
-                    double Longitude = std::stod(Entity.AttributeValue("lon"));
+                    double Longitude = std::stod(Entity.AttributeValue("lon"));                 
                     SNode TempNode;
                     TempNode.DNodeID = ID;
+                    //TempNode.Coords = std::pair<double,double>((Latitude),(Longitude));
                     TempNode.DLatitude = Latitude;
                     TempNode.DLongitude = Longitude;
                     DNodeIDToNodeIndex[ID] = DNodes.size();
@@ -60,6 +61,11 @@ bool CMapRouter::LoadMapAndRoutes(std::istream &osm, std::istream &stops, std::i
             }
         }
     }
+    CCSVReader RouteReader(routes);
+    while(!RouteReader.End()){
+        
+    }
+    return true;
     //SXMLEntity xmlEntity;
     //xmlReader.ReadEntity(&xmlEntity);
 }
@@ -69,11 +75,31 @@ size_t CMapRouter::NodeCount() const{
 }
 
 CMapRouter::TNodeID CMapRouter::GetSortedNodeIDByIndex(size_t index) const{
-    // Your code HERE
+    //return the nodeID of the corresponding index
+    auto counter = DNodes.begin();
+    for(auto i = 0;i < index; i++){
+        counter++;
+    }
+    return counter->DNodeID;
 }
 
 CMapRouter::TLocation CMapRouter::GetSortedNodeLocationByIndex(size_t index) const{
-    // Your code HERE
+    //return pair of coordinates x,y of the corresponding index
+    auto counter = DNodes.begin();
+    //std::pair <double,double> Coords;
+    //get second and 3rd elemnt of adjacency list
+    //2nd & 3rd need to be pair
+    if(index < DNodes.size()){
+        for(size_t i = 0;i < index; i++){
+            counter++;
+        }
+        //return result;
+        return std::pair<double,double>((counter->DLatitude),(counter->DLongitude));
+        
+    }
+    else{ 
+        return std::make_pair(180.0, 360.0);
+    }
 }
 
 CMapRouter::TLocation CMapRouter::GetNodeLocationByID(TNodeID nodeid) const{
@@ -85,7 +111,8 @@ CMapRouter::TNodeID CMapRouter::GetNodeIDByStopID(TStopID stopid) const{
 }
 
 size_t CMapRouter::RouteCount() const{
-    // Your code HERE
+    // return DRoute.size();
+    
 }
 
 std::string CMapRouter::GetSortedRouteNameByIndex(size_t index) const{
