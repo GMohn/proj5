@@ -20,8 +20,10 @@ class CMapRouter{
         
         struct SNode{
             TNodeID DNodeID;
+           using Coords = std::pair<double, double>;
             double DLatitude;
             double DLongitude;
+
 
         };
 
