@@ -1,5 +1,6 @@
 #include "MapRouter.h" 	  			 	 
 #include <cmath>
+#include <sstream>
 
 const CMapRouter::TNodeID CMapRouter::InvalidNodeID = -1;
 
@@ -41,7 +42,7 @@ double CMapRouter::CalculateBearing(double lat1, double lon1,double lat2, double
 
 bool CMapRouter::LoadMapAndRoutes(std::istream &osm, std::istream &stops, std::istream &routes){
     CXMLReader OSMReader(osm);
-    
+    const double WalkingSpeed = 3.0;
     while(!OSMReader.End()){
         SXMLEntity Entity;
         if(OSMReader.ReadEntity(Entity)){
@@ -58,12 +59,74 @@ bool CMapRouter::LoadMapAndRoutes(std::istream &osm, std::istream &stops, std::i
                     DNodeIDToNodeIndex[ID] = DNodes.size();
                     DNodes.push_back(TempNode);
                 }
-            }
+                if(Entity.DNameData == "way"){
+                    std::vector<TNodeIndex> TempIndices;
+                    bool IsOneWay = false;
+                    double MaxSpeed = 25;
+                    while((Entity.DNameData != "way") || (Entity.DType != SXMLEntity::EType::EndElement)){
+                        OSMReader.ReadEntity(Entity);
+                        if(Entity.DType == SXMLEntity::EType::StartElement){
+                            if(Entity.DNameData == "nd"){
+                                auto NodeID = std::stoul(Entity.AttributeValue("ref"));
+                                auto Search = DNodeIDToNodeIndex.find(NodeID);
+                                if( Search != DNodeIDToNodeIndex.end()){
+                                    TempIndices.push_back(Search->second);
+                                }
+                            }
+                            if(Entity.DNameData == "tag"){
+                                if(Entity.AttributeValue("k") == "oneway"){
+                                    IsOneWay = Entity.AttributeValue("v") == "yes";
+                                }
+                                if(Entity.AttributeValue("k") == "maxspeed"){
+                                    std::stringstream TempStream(Entity.AttributeValue("v"));
+                                    TempStream>>MaxSpeed;
+                                }
+                            }
+                        }
+                    }
+                    for(size_t Index = 0; Index + 1 < TempIndices.size(); Index++){
+                        SEdge TempEdge;
+                        auto FromNode = TempIndices[Index];
+                        auto ToNode = TempIndices[Index+1];
+                        TempEdge.DDistance = HaversineDistance(DNodes[FromNode].DLatitude, DNodes[FromNode].DLongitude,DNodes[ToNode].DLatitude, DNodes[ToNode].DLongitude);
+                        TempEdge.DTime = TempEdge.DDistance / WalkingSpeed;
+                        TempEdge.DOtherNodeIndex = ToNode;
+                        DNodes[FromNode].DEdges.push_back(TempEdge);
+                        if(!IsOneWay){
+                            TempEdge.DOtherNodeIndex = FromNode;
+                            DNodes[ToNode].DEdges.push_back(TempEdge);
+                        }
+                        else{
+                            //TODO keep track of back edges for walking
+                        }
+                    }
+                }                    
+            } 
         }
     }
-    CCSVReader RouteReader(routes);
-    while(!RouteReader.End()){
-        
+    CCSVReader StopReader(stops);
+    std::vector<std::string> Row;
+    StopReader.ReadRow(Row);
+    size_t StopColumn = -1;
+    size_t NodeColumn = -1;
+    for (size_t Index = 0; Index < Row.size(); Index++){
+        if(Row[Index] == "stop_id"){
+            StopColumn = Index;
+        }
+        if(Row[Index] == "node_id"){
+            NodeColumn = Index;
+        }
+    }
+    while(!StopReader.End()){
+        if(StopReader.ReadRow(Row)){
+            TStopID StopID = std::stoul(Row[StopColumn]);
+            TNodeID NodeID = std::stoul(Row[NodeColumn]);
+            DStopIDToNodeID[StopID] = NodeID;
+            auto Search = DNodeIDToNodeIndex.find(NodeID);
+            if(Search != DNodeIDToNodeIndex.end()){
+                DStopIDToNodeIndex[StopID] = Search -> second;
+            }
+        }
     }
     return true;
     //SXMLEntity xmlEntity;
@@ -103,11 +166,20 @@ CMapRouter::TLocation CMapRouter::GetSortedNodeLocationByIndex(size_t index) con
 }
 
 CMapRouter::TLocation CMapRouter::GetNodeLocationByID(TNodeID nodeid) const{
-    // Your code HERE
+    auto Search = DNodeIDToNodeIndex.find(nodeid);
+    if (Search != DNodeIDToNodeIndex.end()){
+        auto NodeIndex = Search->second;
+        return TLocation(DNodes[NodeIndex].DLatitude,DNodes[NodeIndex].DLongitude);
+    }
+    return TLocation(180.0, 360.0);
 }
 
 CMapRouter::TNodeID CMapRouter::GetNodeIDByStopID(TStopID stopid) const{
-    // Your code HERE
+    auto Search = DStopIDToNodeID.find(stopid);
+    if(Search != DStopIDToNodeID.end()){
+        return Search->second;
+    }
+    return InvalidNodeID;
 }
 
 size_t CMapRouter::RouteCount() const{
