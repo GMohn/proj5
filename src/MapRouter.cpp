@@ -104,7 +104,10 @@ bool CMapRouter::LoadMapAndRoutes(std::istream &osm, std::istream &stops, std::i
             } 
         }
     }
+    //CSV Readers
+    //stops.csv reader stop_id,node_id
     CCSVReader StopReader(stops);
+    CCSVReader RouteReader(routes);
     std::vector<std::string> Row;
     StopReader.ReadRow(Row);
     size_t StopColumn = -1;
@@ -126,6 +129,32 @@ bool CMapRouter::LoadMapAndRoutes(std::istream &osm, std::istream &stops, std::i
             if(Search != DNodeIDToNodeIndex.end()){
                 DStopIDToNodeIndex[StopID] = Search -> second;
             }
+        }
+    }
+    //routes.csv reader  route,stop_id 
+    size_t RouteColumn = -1;
+    size_t StopRouteColumn = -1;
+    //link stop ids from stop.csv
+    RouteReader.ReadRow(Row);
+    for(size_t Index = 0; Index < Row.size(); Index++){
+        if(Row[Index] == "route"){
+            RouteColumn = Index;
+        }
+        if(Row[Index] == "stop_id"){
+            StopRouteColumn = Index;
+        }
+    }
+    //double check to make sure this is correct
+    //store routes[std::pair[A,[20,21,23]]] = size 1
+    while(!RouteReader.End()){
+        if(RouteReader.ReadRow(Row)){
+            //TPathStep RouteID = std::make_pair<Row[RouteColumn],std::stoul(Row[StopRouteColumn])>;
+            //TNodeID RouteID = std::stoul(Row[RouteColumn]);
+           // DRouteToStopID[RouteID] = StopRouteID;
+            //auto SearchRoute = DStopIDToNodeIndex.find(StopRouteID);
+           // if(SearchRoute != DStopIDToNodeIndex.end()){
+            //    DStopIDToNodeIndex[StopRouteID] = SearchRoute -> second;
+            //}
         }
     }
     return true;
@@ -183,7 +212,7 @@ CMapRouter::TNodeID CMapRouter::GetNodeIDByStopID(TStopID stopid) const{
 }
 
 size_t CMapRouter::RouteCount() const{
-    // return DRoute.size();
+     //return DStopIDToNodeIndex.size();
     
 }
 
