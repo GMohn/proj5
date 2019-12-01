@@ -1,6 +1,7 @@
 #include "MapRouter.h" 	  			 	 
 #include <cmath>
 #include <sstream>
+#include <iostream>
 
 const CMapRouter::TNodeID CMapRouter::InvalidNodeID = -1;
 
@@ -84,7 +85,8 @@ bool CMapRouter::LoadMapAndRoutes(std::istream &osm, std::istream &stops, std::i
                             }
                         }
                     }
-                    for(size_t Index = 0; Index + 1 < TempIndices.size(); Index++){
+                    size_t TempIndicesSize = TempIndices.size();
+                    for(size_t Index = 0; Index + 1 < TempIndicesSize; Index++){
                         SEdge TempEdge;
                         auto FromNode = TempIndices[Index];
                         auto ToNode = TempIndices[Index+1];
@@ -145,16 +147,16 @@ bool CMapRouter::LoadMapAndRoutes(std::istream &osm, std::istream &stops, std::i
         }
     }
     //double check to make sure this is correct
-    //store routes[std::pair[A,[20,21,23]]] = size 1
+    //store routes[A,[20,21,23]] = size 1
     while(!RouteReader.End()){
         if(RouteReader.ReadRow(Row)){
-            //TPathStep RouteID = std::make_pair<Row[RouteColumn],std::stoul(Row[StopRouteColumn])>;
-            //TNodeID RouteID = std::stoul(Row[RouteColumn]);
-           // DRouteToStopID[RouteID] = StopRouteID;
-            //auto SearchRoute = DStopIDToNodeIndex.find(StopRouteID);
-           // if(SearchRoute != DStopIDToNodeIndex.end()){
-            //    DStopIDToNodeIndex[StopRouteID] = SearchRoute -> second;
-            //}
+            TStopID StopRouteID = std::stoul(Row[StopRouteColumn]);
+            TRouteID RouteID = std::string(Row[RouteColumn]);
+            DRouteToStopID[RouteID] = StopRouteID;
+            auto SearchStop = DRouteToStopID.find(RouteID);
+            if(SearchStop != DRouteToStopID.end()){
+                DRouteToStopID[RouteID] = SearchStop -> second;
+            }
         }
     }
     return true;
@@ -212,16 +214,44 @@ CMapRouter::TNodeID CMapRouter::GetNodeIDByStopID(TStopID stopid) const{
 }
 
 size_t CMapRouter::RouteCount() const{
-     //return DStopIDToNodeIndex.size();
+    return DRouteToStopID.size();
     
 }
 
 std::string CMapRouter::GetSortedRouteNameByIndex(size_t index) const{
-    // Your code HERE
+    auto counter = DRouteToStopID.begin();
+    for(auto i = 0;i < index; i++){
+        counter++;
+    }
+    return counter->first;
+
 }
 
 bool CMapRouter::GetRouteStopsByRouteName(const std::string &route, std::vector< TStopID > &stops){
-    // Your code HERE
+    //populate stops with route (A)
+    //find Key(route)
+    //DRouteToStopID[A,[20,21,23]]
+    auto Search = DRouteToStopID.find(route);
+    //get size of value 
+    //auto VectorSize = DRouteToStopID[route].size();
+    //populate 'stops vector' with value of A [20,21,23] https://stackoverflow.com/questions/4263640/find-mapped-value-of-map
+    if (Search != DRouteToStopID.end()){
+        //loop through vector of values [20,21,23]
+        auto RouteValues = Search->second;
+        std::cout << "Route Values: "<<RouteValues <<std::endl;
+        //for(auto i : Search->second){
+        //    stops.push_back(i.first);
+        //}
+        for(auto it = DRouteToStopID.begin();it!=DRouteToStopID.end();it++){
+            std::cout << "@ " << __LINE__ << std::endl;
+            if(it-> first == route){
+                stops.push_back(it->second);
+            }
+        }
+        //stops.pop_back();
+        return true;
+    }
+    return false;
 }
 
 double CMapRouter::FindShortestPath(TNodeID src, TNodeID dest, std::vector< TNodeID > &path){

@@ -17,7 +17,7 @@ class CMapRouter{
         static const TNodeID InvalidNodeID;
     private:
         using TNodeIndex = size_t;
-        
+        using TRouteID = std::string;
         struct SEdge{
             TNodeIndex DOtherNodeIndex;
             double DDistance;
@@ -37,8 +37,8 @@ class CMapRouter{
         std::unordered_map< TNodeID, TNodeIndex> DNodeIDToNodeIndex;
         std::unordered_map<TStopID, TNodeID> DStopIDToNodeID;
         std::unordered_map<TStopID, TNodeIndex> DStopIDToNodeIndex;
-        std::unordered_map<char,TStopID> DRouteToStopID;
-        //std::unordered_map<TPathStep> DRouteToNodeID; 
+        std::unordered_map<TRouteID,TStopID> DRouteToStopID;
+        //std::unordered_map<TRouteID,std::vector<TStopID>> DRouteToNodeID; 
         
     public:
         CMapRouter();
