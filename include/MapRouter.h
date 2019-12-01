@@ -37,7 +37,7 @@ class CMapRouter{
         std::unordered_map< TNodeID, TNodeIndex> DNodeIDToNodeIndex;
         std::unordered_map<TStopID, TNodeID> DStopIDToNodeID;
         std::unordered_map<TStopID, TNodeIndex> DStopIDToNodeIndex;
-        std::unordered_map<TRouteID,TStopID> DRouteToStopID;
+        std::unordered_map<TRouteID,std::vector<TStopID>> DRouteToStopID;
         //std::unordered_map<TRouteID,std::vector<TStopID>> DRouteToNodeID; 
         
     public:

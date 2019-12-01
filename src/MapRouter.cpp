@@ -148,14 +148,18 @@ bool CMapRouter::LoadMapAndRoutes(std::istream &osm, std::istream &stops, std::i
     }
     //double check to make sure this is correct
     //store routes[A,[20,21,23]] = size 1
+    https://stackoverflow.com/questions/698345/i-need-to-have-a-key-with-multiple-values-what-datastructure-would-you-recommen
     while(!RouteReader.End()){
         if(RouteReader.ReadRow(Row)){
             TStopID StopRouteID = std::stoul(Row[StopRouteColumn]);
             TRouteID RouteID = std::string(Row[RouteColumn]);
-            DRouteToStopID[RouteID] = StopRouteID;
+            DRouteToStopID[RouteID].emplace_back(StopRouteID);
             auto SearchStop = DRouteToStopID.find(RouteID);
             if(SearchStop != DRouteToStopID.end()){
-                DRouteToStopID[RouteID] = SearchStop -> second;
+                DRouteToStopID[RouteID] = (SearchStop -> second);
+                //TODO link stop ids to node ids
+
+                //std::cout << "DROUTE Values: "<<DRouteToStopID[RouteID] <<std::endl;
             }
         }
     }
@@ -233,19 +237,24 @@ bool CMapRouter::GetRouteStopsByRouteName(const std::string &route, std::vector<
     //DRouteToStopID[A,[20,21,23]]
     auto Search = DRouteToStopID.find(route);
     //get size of value 
-    //auto VectorSize = DRouteToStopID[route].size();
+    auto VectorSize = DRouteToStopID[route].size();
     //populate 'stops vector' with value of A [20,21,23] https://stackoverflow.com/questions/4263640/find-mapped-value-of-map
     if (Search != DRouteToStopID.end()){
         //loop through vector of values [20,21,23]
         auto RouteValues = Search->second;
-        std::cout << "Route Values: "<<RouteValues <<std::endl;
+        //std::cout << "Route Values: "<<RouteValues[0] <<std::endl;
         //for(auto i : Search->second){
         //    stops.push_back(i.first);
         //}
         for(auto it = DRouteToStopID.begin();it!=DRouteToStopID.end();it++){
             std::cout << "@ " << __LINE__ << std::endl;
             if(it-> first == route){
-                stops.push_back(it->second);
+                //stops.push_back(RouteValues);
+                //stops.push_back(DRouteToStopID.second[it]);
+                for(auto iter = 0; iter < VectorSize ;iter++){
+                std::cout << "@ " << __LINE__ << std::endl;
+                stops.push_back(RouteValues[iter]);
+                }
             }
         }
         //stops.pop_back();
@@ -256,6 +265,7 @@ bool CMapRouter::GetRouteStopsByRouteName(const std::string &route, std::vector<
 
 double CMapRouter::FindShortestPath(TNodeID src, TNodeID dest, std::vector< TNodeID > &path){
     // Your code HERE
+    //find distance between two nodes with haversine distance
 }
 
 double CMapRouter::FindFastestPath(TNodeID src, TNodeID dest, std::vector< TPathStep > &path){

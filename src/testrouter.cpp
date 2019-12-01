@@ -63,10 +63,9 @@ TEST(MapRouter,BasicTest){
     EXPECT_EQ(MapRouter.GetSortedNodeIDByIndex(3), 4);
     EXPECT_EQ(MapRouter.GetSortedNodeIDByIndex(4), 5);
     EXPECT_EQ(MapRouter.GetSortedNodeIDByIndex(5), 6);
-    
     auto Position = MapRouter.GetSortedNodeLocationByIndex(0);
-    EXPECT_EQ(std::get<0>(Position), 0.0); //lat
-    EXPECT_EQ(std::get<1>(Position), 0.0); //lon
+    EXPECT_EQ(std::get<0>(Position), 0.0);
+    EXPECT_EQ(std::get<1>(Position), 0.0);
     Position = MapRouter.GetSortedNodeLocationByIndex(1);
     EXPECT_EQ(std::get<0>(Position), 0.0);
     EXPECT_EQ(std::get<1>(Position), 1.0);
@@ -85,9 +84,7 @@ TEST(MapRouter,BasicTest){
     Position = MapRouter.GetSortedNodeLocationByIndex(6);
     EXPECT_EQ(std::get<0>(Position), 180.0);
     EXPECT_EQ(std::get<1>(Position), 360.0);
-    
     EXPECT_EQ(MapRouter.RouteCount(), 1);
-    FAIL(); //breakpoint to stop further tests
     EXPECT_EQ(MapRouter.GetSortedRouteNameByIndex(0), "A");
     EXPECT_EQ(MapRouter.GetNodeIDByStopID(20), 2);
     EXPECT_EQ(MapRouter.GetNodeIDByStopID(21), 3);
@@ -103,7 +100,7 @@ TEST(MapRouter,BasicTest){
 }
 
 TEST(MapRouter,ShortestPathTest){
-    FAIL(); //breakpoint to stop further tests
+    
     std::stringstream InOSM(OSMFileData);
     std::stringstream InStops(StopsCSVFileData);
     std::stringstream InRoutes(RoutesCSVFileData);
