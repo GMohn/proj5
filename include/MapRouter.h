@@ -18,17 +18,28 @@ class CMapRouter{
     private:
         using TNodeIndex = size_t;
         
+        struct SEdge{
+            TNodeIndex DOtherNodeIndex;
+            double DDistance;
+            double DTime;
+            double DMaxSpeed;
+        };
+
         struct SNode{
             TNodeID DNodeID;
-           using Coords = std::pair<double, double>;
             double DLatitude;
             double DLongitude;
-
-
+            std::vector<SEdge> DEdges;
         };
 
         std::vector< SNode > DNodes;
+        std::vector<TNodeID> DSortNodeIDs;
         std::unordered_map< TNodeID, TNodeIndex> DNodeIDToNodeIndex;
+        std::unordered_map<TStopID, TNodeID> DStopIDToNodeID;
+        std::unordered_map<TStopID, TNodeIndex> DStopIDToNodeIndex;
+        std::unordered_map<char,TStopID> DRouteToStopID;
+        //std::unordered_map<TPathStep> DRouteToNodeID; 
+        
     public:
         CMapRouter();
         ~CMapRouter();
