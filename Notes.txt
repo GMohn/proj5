@@ -1,4 +1,10 @@
-Cant load until we hit</way>
+DNodes is a vector of SNodes. SNodes get populated with DNodeID,DLat,DLon,DEdges.
+DEdges is a vector of SEdge. SEdge is populated with OtherNodeIdx,DDistance,DTime, DMaxSped
+
+DNodes[[ID,Lat,Lon,[OtherNode,Dist,Time,Speed]],[[ID,Lat,Lon,[OtherNode,Dist,Time,Speed]]]
+
+stop_id only matters for joining route to node_id
+
 if we have EType start, and its a way, then keep reading in new entities until ::end of way
 vector or something to keep track node ids there are in which order. 
 Tags: one way (bool) only true if one way tag and its set to yes
@@ -9,6 +15,7 @@ for this node, add an edge to this node if its two way, add to both nodes
 array of adjaceny lists
 need both readers to work, cvs writer to save routes
 
+may want a set that keeps track of the route names because of duplicates, and also may want to use a map to go from routename to list of stops.
 
 Vector 'DNodes' of SNode has 
 DNodeID

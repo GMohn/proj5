@@ -63,6 +63,7 @@ bool CMapRouter::LoadMapAndRoutes(std::istream &osm, std::istream &stops, std::i
                 if(Entity.DNameData == "way"){
                     std::vector<TNodeIndex> TempIndices;
                     bool IsOneWay = false;
+                    bool IsRoundAbout = false;
                     double MaxSpeed = 25;
                     while((Entity.DNameData != "way") || (Entity.DType != SXMLEntity::EType::EndElement)){
                         OSMReader.ReadEntity(Entity);
@@ -82,6 +83,9 @@ bool CMapRouter::LoadMapAndRoutes(std::istream &osm, std::istream &stops, std::i
                                     std::stringstream TempStream(Entity.AttributeValue("v"));
                                     TempStream>>MaxSpeed;
                                 }
+                                if(Entity.AttributeValue("k") == "junction"){
+                                    IsRoundAbout = Entity.AttributeValue("v") == "roundabout";
+                                }
                             }
                         }
                     }
@@ -100,9 +104,11 @@ bool CMapRouter::LoadMapAndRoutes(std::istream &osm, std::istream &stops, std::i
                         }
                         else{
                             //TODO keep track of back edges for walking
+                            
+
                         }
                     }
-                }                    
+                }                     
             } 
         }
     }
@@ -148,7 +154,7 @@ bool CMapRouter::LoadMapAndRoutes(std::istream &osm, std::istream &stops, std::i
     }
     //double check to make sure this is correct
     //store routes[A,[20,21,23]] = size 1
-    https://stackoverflow.com/questions/698345/i-need-to-have-a-key-with-multiple-values-what-datastructure-would-you-recommen
+    //https://stackoverflow.com/questions/698345/i-need-to-have-a-key-with-multiple-values-what-datastructure-would-you-recommen
     while(!RouteReader.End()){
         if(RouteReader.ReadRow(Row)){
             TStopID StopRouteID = std::stoul(Row[StopRouteColumn]);
@@ -252,8 +258,8 @@ bool CMapRouter::GetRouteStopsByRouteName(const std::string &route, std::vector<
                 //stops.push_back(RouteValues);
                 //stops.push_back(DRouteToStopID.second[it]);
                 for(auto iter = 0; iter < VectorSize ;iter++){
-                std::cout << "@ " << __LINE__ << std::endl;
-                stops.push_back(RouteValues[iter]);
+                    std::cout << "@ " << __LINE__ << std::endl;
+                    stops.push_back(RouteValues[iter]);
                 }
             }
         }
@@ -264,8 +270,25 @@ bool CMapRouter::GetRouteStopsByRouteName(const std::string &route, std::vector<
 }
 
 double CMapRouter::FindShortestPath(TNodeID src, TNodeID dest, std::vector< TNodeID > &path){
-    // Your code HERE
-    //find distance between two nodes with haversine distance
+    //node id keyd to prevnode and the distance between
+   std::priority_queue<std::pair<double,TNodeID>> UnvisitedDNodeID;
+    auto SizeOfMap = NodeCount();
+    //populate Unvisitednodes
+
+    for(size_t i = 0; i < SizeOfMap; i++){
+        std::cout << "@ " << __LINE__ << std::endl;
+        //UnvisitedDNodeID.push(0.0,GetSortedNodeIDByIndex(i));
+    }
+    //nodeID,pair is unvisited
+    //where nodeID is all vertexes in map and pair prev node, shortest dist from src
+    //1[?,0],2[1,dist],3[2,dist],4[3,dist],5[2,dist],6[1,dist]
+    //https://stackoverflow.com/questions/29560245/c-how-to-get-first-and-second-element-of-pair-if-used-as-key-in-map
+    //path is my visited
+    //if path.find(dest) then return distance 
+    //find shortests distance between two nodes with haversine distance
+    
+    //TNodeID StartingNode = UnvisitedNodes.find(src);
+
 }
 
 double CMapRouter::FindFastestPath(TNodeID src, TNodeID dest, std::vector< TPathStep > &path){
