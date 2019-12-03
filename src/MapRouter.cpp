@@ -2,6 +2,8 @@
 #include <cmath>
 #include <sstream>
 #include <iostream>
+#include<bits/stdc++.h> 
+#include<set>
 
 const CMapRouter::TNodeID CMapRouter::InvalidNodeID = -1;
 
@@ -61,6 +63,7 @@ bool CMapRouter::LoadMapAndRoutes(std::istream &osm, std::istream &stops, std::i
                     DNodes.push_back(TempNode);
                 }
                 if(Entity.DNameData == "way"){
+                    //nodeid
                     std::vector<TNodeIndex> TempIndices;
                     bool IsOneWay = false;
                     bool IsRoundAbout = false;
@@ -72,6 +75,7 @@ bool CMapRouter::LoadMapAndRoutes(std::istream &osm, std::istream &stops, std::i
                                 auto NodeID = std::stoul(Entity.AttributeValue("ref"));
                                 auto Search = DNodeIDToNodeIndex.find(NodeID);
                                 if( Search != DNodeIDToNodeIndex.end()){
+                                    //push value of node index
                                     TempIndices.push_back(Search->second);
                                 }
                             }
@@ -190,7 +194,6 @@ CMapRouter::TNodeID CMapRouter::GetSortedNodeIDByIndex(size_t index) const{
 CMapRouter::TLocation CMapRouter::GetSortedNodeLocationByIndex(size_t index) const{
     //return pair of coordinates x,y of the corresponding index
     auto counter = DNodes.begin();
-    //std::pair <double,double> Coords;
     //get second and 3rd elemnt of adjacency list
     //2nd & 3rd need to be pair
     if(index < DNodes.size()){
@@ -271,14 +274,45 @@ bool CMapRouter::GetRouteStopsByRouteName(const std::string &route, std::vector<
 
 double CMapRouter::FindShortestPath(TNodeID src, TNodeID dest, std::vector< TNodeID > &path){
     //node id keyd to prevnode and the distance between
-   std::priority_queue<std::pair<double,TNodeID>> UnvisitedDNodeID;
     auto SizeOfMap = NodeCount();
-    //populate Unvisitednodes
-
-    for(size_t i = 0; i < SizeOfMap; i++){
+    //src = 4, dest = 3 in TNodeID. We want them as TNodeIdx
+    auto SearchSource = DNodeIDToNodeIndex.find(src);
+    if(SearchSource != DNodeIDToNodeIndex.end()){
         std::cout << "@ " << __LINE__ << std::endl;
-        //UnvisitedDNodeID.push(0.0,GetSortedNodeIDByIndex(i));
+        src = SearchSource -> second; //src is now 3
     }
+    //populate Unvisitednodes
+    std::vector<double> MinDistance(SizeOfMap,INT_MAX);
+    //[max,max,max,max,max,max]
+    //DNode[3]on the first DEdge distance
+    MinDistance[DNodes[src].DEdges[0].DDistance] = 0;
+    //[max,max,max,max,max,max]
+    std::set<std::pair<double,double>> ActiveVertices;
+    ActiveVertices.insert({0,src});
+    while(!ActiveVertices.empty()){
+        std::cout << "@ " << __LINE__ << std::endl;
+        auto where = ActiveVertices.begin()->second;
+        if(where == dest){
+            return MinDistance[where];
+        }
+        //erase node thats been visited
+        ActiveVertices.erase(ActiveVertices.begin());
+        for(auto i = 0; i < SizeOfMap; i++){
+            //doesnt work
+            if(MinDistance[i]>DNodes[i].DEdges[0].DDistance){
+                std::cout << "@ " << __LINE__ << std::endl;
+                ActiveVertices.erase({MinDistance[i],i});
+                MinDistance[i] = MinDistance[where]+DNodes[i].DEdges[0].DDistance;
+                ActiveVertices.insert({MinDistance[i],i});
+            }
+        }
+        return INT_MAX;
+    }
+   // for(size_t i = 0; i < SizeOfMap; i++){
+      // 
+        //UnvisitedDNodeID.push(0.0,GetSortedNodeIDByIndex(i));
+   // }
+    
     //nodeID,pair is unvisited
     //where nodeID is all vertexes in map and pair prev node, shortest dist from src
     //1[?,0],2[1,dist],3[2,dist],4[3,dist],5[2,dist],6[1,dist]

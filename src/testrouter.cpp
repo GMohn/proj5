@@ -141,6 +141,7 @@ TEST(MapRouter,FastestPathTest){
         EXPECT_EQ(std::get<0>(Path[5]), "Walk");
         EXPECT_EQ(std::get<1>(Path[5]), 6);
     }
+    
 }
 
 TEST(MapRouter,PathDescriptionTest){

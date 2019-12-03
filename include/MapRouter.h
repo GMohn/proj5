@@ -38,6 +38,8 @@ class CMapRouter{
         std::unordered_map<TStopID, TNodeID> DStopIDToNodeID;
         std::unordered_map<TStopID, TNodeIndex> DStopIDToNodeIndex;
         std::unordered_map<TRouteID,std::vector<TStopID>> DRouteToStopID;
+        std::priority_queue<std::pair<double,TNodeID>> UnvisitedDNodeID;
+        //std::unordered_map<TNodeID,SNode>DGraph;
         //std::unordered_map<TRouteID,std::vector<TStopID>> DRouteToNodeID; 
         
     public:
