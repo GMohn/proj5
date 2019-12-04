@@ -114,6 +114,13 @@ TEST(MapRouter,ShortestPathTest){
         EXPECT_EQ(Path[0], 4);
         EXPECT_EQ(Path[1], 3);
     }
+    std::vector< CMapRouter::TNodeID > Path2;
+    MapRouter.FindShortestPath(6, 2, Path2);
+    EXPECT_EQ(Path2.size(), 3);
+    EXPECT_EQ(Path2[0], 6);
+    EXPECT_EQ(Path2[1], 5);
+    EXPECT_EQ(Path2[2], 2);
+
 }
 
 TEST(MapRouter,FastestPathTest){

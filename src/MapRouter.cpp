@@ -95,21 +95,37 @@ bool CMapRouter::LoadMapAndRoutes(std::istream &osm, std::istream &stops, std::i
                     }
                     size_t TempIndicesSize = TempIndices.size();
                     for(size_t Index = 0; Index + 1 < TempIndicesSize; Index++){
-                        SEdge TempEdge;
+                        std::cout<<"Adding Edge: "<<std::endl;
+                        SEdge TempEdge, TempEdgeBack;
                         auto FromNode = TempIndices[Index];
                         auto ToNode = TempIndices[Index+1];
+                        //creating edge going forward
                         TempEdge.DDistance = HaversineDistance(DNodes[FromNode].DLatitude, DNodes[FromNode].DLongitude,DNodes[ToNode].DLatitude, DNodes[ToNode].DLongitude);
                         TempEdge.DTime = TempEdge.DDistance / WalkingSpeed;
                         TempEdge.DOtherNodeIndex = ToNode;
                         DNodes[FromNode].DEdges.push_back(TempEdge);
+                        //creating a edge going back
+                        TempEdgeBack.DDistance = TempEdge.DDistance;
+                        TempEdgeBack.DTime = TempEdge.DDistance / WalkingSpeed;
+                        TempEdgeBack.DOtherNodeIndex = FromNode;
+                        DNodes[ToNode].DEdges.push_back(TempEdgeBack);
                         if(!IsOneWay){
+                            std::cout<<"Add directed edges"<<std::endl;
                             TempEdge.DOtherNodeIndex = FromNode;
                             DNodes[ToNode].DEdges.push_back(TempEdge);
                         }
                         else{
-                            //TODO keep track of back edges for walking
                             
-
+                            /*if(Index == TempIndicesSize ){
+                                std::cout<<"Added edge to NodeID 1"<<std::endl;
+                                ToNode = TempIndices[0];
+                                DNodes[ToNode].DEdges.push_back(TempEdge);
+                            }
+                            //not at last node and can connect both ways
+                                std::cout<<"Added undirected edges"<<std::endl;
+                                DNodes[FromNode].DEdges.push_back(TempEdge);
+                                TempEdge.DOtherNodeIndex = FromNode;
+                                DNodes[ToNode].DEdges.push_back(TempEdge);*/
                         }
                     }
                 }                     
@@ -273,55 +289,89 @@ bool CMapRouter::GetRouteStopsByRouteName(const std::string &route, std::vector<
 }
 
 double CMapRouter::FindShortestPath(TNodeID src, TNodeID dest, std::vector< TNodeID > &path){
+    std::unordered_map<TNodeIndex,TNodeIndex> VisitedFrom;
     //node id keyd to prevnode and the distance between
     auto SizeOfMap = NodeCount();
     //src = 4, dest = 3 in TNodeID. We want them as TNodeIdx
-    auto SearchSource = DNodeIDToNodeIndex.find(src);
-    if(SearchSource != DNodeIDToNodeIndex.end()){
+    auto SearchSource = DNodeIDToNodeIndex.find(src)->second;
+    /*if(SearchSource != DNodeIDToNodeIndex.end()){
         std::cout << "@ " << __LINE__ << std::endl;
-        src = SearchSource -> second; //src is now 3
-    }
+        src = SearchSource; //src is now idx 3
+    }*/
+    auto SearchDest = DNodeIDToNodeIndex.find(dest)->second;
+    //if(SearchDest != DNodeIDToNodeIndex.end()){
+        //std::cout << "@ " << __LINE__ << std::endl;
+        //dest = SearchDest -> second; //src is now 3
+    //}
+    typedef std::pair<double,double> DPair;
     //populate Unvisitednodes
     std::vector<double> MinDistance(SizeOfMap,INT_MAX);
     //[max,max,max,max,max,max]
     //DNode[3]on the first DEdge distance
-    MinDistance[DNodes[src].DEdges[0].DDistance] = 0;
+    MinDistance[SearchSource] = 0;
     //[max,max,max,max,max,max]
-    std::set<std::pair<double,double>> ActiveVertices;
-    ActiveVertices.insert({0,src});
+    std::priority_queue<DPair,std::vector<DPair>,std::greater<DPair>> ActiveVertices;
+    ActiveVertices.push({0,SearchSource});
     while(!ActiveVertices.empty()){
         std::cout << "@ " << __LINE__ << std::endl;
-        auto where = ActiveVertices.begin()->second;
-        if(where == dest){
-            return MinDistance[where];
-        }
-        //erase node thats been visited
-        ActiveVertices.erase(ActiveVertices.begin());
-        for(auto i = 0; i < SizeOfMap; i++){
-            //doesnt work
-            if(MinDistance[i]>DNodes[i].DEdges[0].DDistance){
-                std::cout << "@ " << __LINE__ << std::endl;
-                ActiveVertices.erase({MinDistance[i],i});
-                MinDistance[i] = MinDistance[where]+DNodes[i].DEdges[0].DDistance;
-                ActiveVertices.insert({MinDistance[i],i});
+        auto CurrPair = ActiveVertices.top();
+        ActiveVertices.pop();
+        //std::cout<<"Active Size : "<<ActiveVertices.size()<<" @ Line: "<< __LINE__<<std::endl;
+        //get node Index
+        auto CurrNodeIndex = CurrPair.second;
+        auto CurrDist = CurrPair.first;
+        //std::cout<<"NodeIdx: "<<CurrNodeIndex<<" SearchDest: "<<SearchDest<< std::endl;
+        if(CurrNodeIndex == SearchDest){
+            //create path by indices
+            std::vector<TNodeIndex>PathIndices;
+            //pushing backwards            
+            auto Current = SearchDest;
+            std::cout << "@ " << __LINE__ << std::endl;
+            //Construct Backwards path from VisitedFrom
+            while(Current != SearchSource){ 
+                //std::cout << "Current: "<<Current <<"@ " << __LINE__ << std::endl;
+                //std::cout << "SearchSource: "<<SearchSource<< std::endl;
+                auto CurrNodeID = DNodes[Current].DNodeID;
+                PathIndices.push_back(CurrNodeID);
+                Current = VisitedFrom[Current];
+                
+            }            
+            //Populate path by reversing backwards VisitedFrom
+            //use node id
+            path.push_back(src);
+            std::cout << "@ " << __LINE__ << std::endl;
+            auto PathSize = PathIndices.size()-1;
+            std::cout << "PathSize: " << PathSize<< std::endl;
+            for(int i = PathSize;i >= 0; i--){
+                std::cout << "i: " << i << std::endl;
+                path.push_back(PathIndices[i]);
+                //std::cout << "@ " << __LINE__ << std::endl;
             }
+            return CurrDist;
         }
-        return INT_MAX;
+        //auto DNodeIndex = DNodeIDToNodeIndex[CurrNodeIndex];
+        auto CurrNode = DNodes[CurrNodeIndex];
+        for(auto element: CurrNode.DEdges){
+            auto DistOfElements = CurrDist+element.DDistance;
+            auto DistOfPrevEdge = MinDistance[element.DOtherNodeIndex];
+            std::cout <<element.DOtherNodeIndex<<std::endl;
+            
+            if(DistOfElements<DistOfPrevEdge){
+                std::cout << "@ " << __LINE__ << std::endl;
+                //update mindistance
+                MinDistance[element.DOtherNodeIndex] = DistOfElements;
+                //update priorityqueue
+                ActiveVertices.push({DistOfElements,element.DOtherNodeIndex});
+                //std::cout<<"Active Size : "<<ActiveVertices.size()<<" @ Line: "<< __LINE__<<std::endl;
+                //update VisitedFrom draw our path
+                std::cout<<"Setting Visited From: "<<element.DOtherNodeIndex<< " to: "<< CurrNodeIndex<<std::endl;
+                VisitedFrom[element.DOtherNodeIndex] = CurrNodeIndex;
+            }
+        }  
+
     }
-   // for(size_t i = 0; i < SizeOfMap; i++){
-      // 
-        //UnvisitedDNodeID.push(0.0,GetSortedNodeIDByIndex(i));
-   // }
-    
-    //nodeID,pair is unvisited
-    //where nodeID is all vertexes in map and pair prev node, shortest dist from src
-    //1[?,0],2[1,dist],3[2,dist],4[3,dist],5[2,dist],6[1,dist]
-    //https://stackoverflow.com/questions/29560245/c-how-to-get-first-and-second-element-of-pair-if-used-as-key-in-map
-    //path is my visited
-    //if path.find(dest) then return distance 
-    //find shortests distance between two nodes with haversine distance
-    
-    //TNodeID StartingNode = UnvisitedNodes.find(src);
+    return INT_MAX;
+
 
 }
 
