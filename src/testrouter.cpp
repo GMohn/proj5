@@ -124,7 +124,7 @@ TEST(MapRouter,ShortestPathTest){
 }
 
 TEST(MapRouter,FastestPathTest){
-    FAIL(); //breakpoint to stop further tests
+    
     std::stringstream InOSM(OSMFileData);
     std::stringstream InStops(StopsCSVFileData);
     std::stringstream InRoutes(RoutesCSVFileData);
@@ -134,6 +134,7 @@ TEST(MapRouter,FastestPathTest){
     EXPECT_TRUE(MapRouter.LoadMapAndRoutes(InOSM, InStops, InRoutes));
     EXPECT_EQ(MapRouter.FindFastestPath(1, 6, Path), 54.3815860394229702);
     EXPECT_EQ(Path.size(), 6);
+    FAIL(); //breakpoint to stop further tests
     if(6 == Path.size()){
         EXPECT_EQ(std::get<0>(Path[0]), "Walk");
         EXPECT_EQ(std::get<1>(Path[0]), 1);

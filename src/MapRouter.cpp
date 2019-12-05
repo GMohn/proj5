@@ -42,10 +42,40 @@ double CMapRouter::CalculateBearing(double lat1, double lon1,double lat2, double
     double Y = cos(LatRad1)*sin(LatRad2)-sin(LatRad1)*cos(LatRad2)*cos(LonRad2-LonRad1);
     return RadiansToDegrees(atan2(X,Y));
 }
+double CMapRouter::Dijkstras(TNodeIndex src, TNodeIndex dest, std::vector< TNodeIndex> &path, char type){
+    std::vector<double> Distance(DNodes.size(),std::numeric_limits<double>::max());
+    std::vector<TNodeIndex> Previous(DNodes.size(),InvalidNodeID);
+    std::vector<TNodeIndex> PriorityHeap;
+    auto Compare = [&Distance](TNodeIndex idx1, TNodeIndex idx2){
+        return (Distance[idx1] < Distance[idx2]);
+    };
+    Distance[src] = 0;
+    Previous[src] = src;
+    PriorityHeap.push_back(src);
+    while(!PriorityHeap.empty()){
+        std::make_heap(PriorityHeap.begin(), PriorityHeap.end(), Compare);
+        auto Current = PriorityHeap.front();
+        std::pop_heap(PriorityHeap.begin(),PriorityHeap.end(), Compare);
+        PriorityHeap.pop_back();
+        for(auto Edge : DNodes[Current].DEdges){
+            auto AltDist = Distance[Current] + (type == 'D' ? Edge.DDistance / Edge.DMaxSpeed : (type == 'd' ? Edge.DDistance : Edge.DTime));
+            if(AltDist <Distance[Edge.DOtherNodeIndex]){
+                Distance[Edge.DOtherNodeIndex] = AltDist;
+                if(Previous[Edge.DOtherNodeIndex] == InvalidNodeID){
+                    PriorityHeap.push_back(Edge.DOtherNodeIndex);
+                }
+                Previous[Edge.DOtherNodeIndex] = Current;
+            }
+        }
+    }
+    return Distance[dest];
+
+}
 
 bool CMapRouter::LoadMapAndRoutes(std::istream &osm, std::istream &stops, std::istream &routes){
     CXMLReader OSMReader(osm);
     const double WalkingSpeed = 3.0;
+    std::unordered_map<TNodeIndex, std::vector<SEdge>> EdgesToAdd;
     while(!OSMReader.End()){
         SXMLEntity Entity;
         if(OSMReader.ReadEntity(Entity)){
@@ -110,12 +140,16 @@ bool CMapRouter::LoadMapAndRoutes(std::istream &osm, std::istream &stops, std::i
                         TempEdgeBack.DOtherNodeIndex = FromNode;
                         DNodes[ToNode].DEdges.push_back(TempEdgeBack);
                         if(!IsOneWay){
-                            std::cout<<"Add directed edges"<<std::endl;
+                            std::cout<<"Add edges"<<std::endl;
                             TempEdge.DOtherNodeIndex = FromNode;
                             DNodes[ToNode].DEdges.push_back(TempEdge);
                         }
                         else{
-                            
+                            if(EdgesToAdd.end() == EdgesToAdd.find(ToNode)){
+                                EdgesToAdd[ToNode] = {};    
+                            }
+                            TempEdgeBack.DOtherNodeIndex = FromNode;
+                            EdgesToAdd[ToNode].push_back(TempEdge);
                             /*if(Index == TempIndicesSize ){
                                 std::cout<<"Added edge to NodeID 1"<<std::endl;
                                 ToNode = TempIndices[0];
@@ -135,9 +169,10 @@ bool CMapRouter::LoadMapAndRoutes(std::istream &osm, std::istream &stops, std::i
     //CSV Readers
     //stops.csv reader stop_id,node_id
     CCSVReader StopReader(stops);
-    CCSVReader RouteReader(routes);
+    
     std::vector<std::string> Row;
     StopReader.ReadRow(Row);
+    SEdge TempBusEdge;
     size_t StopColumn = -1;
     size_t NodeColumn = -1;
     for (size_t Index = 0; Index < Row.size(); Index++){
@@ -148,20 +183,29 @@ bool CMapRouter::LoadMapAndRoutes(std::istream &osm, std::istream &stops, std::i
             NodeColumn = Index;
         }
     }
+    
     while(!StopReader.End()){
         if(StopReader.ReadRow(Row)){
+            std::cout << "@ " << __LINE__ << std::endl;
             TStopID StopID = std::stoul(Row[StopColumn]);
             TNodeID NodeID = std::stoul(Row[NodeColumn]);
             DStopIDToNodeID[StopID] = NodeID;
             auto Search = DNodeIDToNodeIndex.find(NodeID);
             if(Search != DNodeIDToNodeIndex.end()){
-                DStopIDToNodeIndex[StopID] = Search -> second;
+                DStopIDToNodeIndex[StopID] = Search -> second; //this is my node index
+                //update edge with busedge based on nodeids
+                //auto StopNodeIdx = DStopIDToNodeIndex[StopID];
+                //TempBusEdge.DTime = TempEdge.DDistance / MaxSpeed;
+                //TempBusEdge.DOtherNodeIndex = StopNodeIdx+1;
+                //DNodes[StopNodeIdx].DEdges.push_back(TempBusEdge);
             }
+
         }
     }
+    CCSVReader RouteReader(routes);
     //routes.csv reader  route,stop_id 
     size_t RouteColumn = -1;
-    size_t StopRouteColumn = -1;
+    //size_t StopColumn = -1;
     //link stop ids from stop.csv
     RouteReader.ReadRow(Row);
     for(size_t Index = 0; Index < Row.size(); Index++){
@@ -169,26 +213,71 @@ bool CMapRouter::LoadMapAndRoutes(std::istream &osm, std::istream &stops, std::i
             RouteColumn = Index;
         }
         if(Row[Index] == "stop_id"){
-            StopRouteColumn = Index;
+            StopColumn = Index;
         }
     }
     //double check to make sure this is correct
     //store routes[A,[20,21,23]] = size 1
+    //std::vector<TRouteID>TempStops;
     //https://stackoverflow.com/questions/698345/i-need-to-have-a-key-with-multiple-values-what-datastructure-would-you-recommen
     while(!RouteReader.End()){
         if(RouteReader.ReadRow(Row)){
-            TStopID StopRouteID = std::stoul(Row[StopRouteColumn]);
-            TRouteID RouteID = std::string(Row[RouteColumn]);
-            DRouteToStopID[RouteID].emplace_back(StopRouteID);
-            auto SearchStop = DRouteToStopID.find(RouteID);
-            if(SearchStop != DRouteToStopID.end()){
-                DRouteToStopID[RouteID] = (SearchStop -> second);
-                //TODO link stop ids to node ids
-
-                //std::cout << "DROUTE Values: "<<DRouteToStopID[RouteID] <<std::endl;
+            TStopID StopID = std::stoul(Row[StopColumn]);
+            std::string RouteName = Row[RouteColumn];
+            //DRouteToStops[RouteName].emplace_back(StopRouteID);
+            
+            //link stop ids to node ids
+            //auto SearchNodeId = DStopIDToNodeID.find(StopID)
+            //DStopIDToNodeID[StopRouteID] = SearchNodeId;
+            if(DRouteToStops.end()== DRouteToStops.find(RouteName)){
+                DRouteToStops[RouteName] = {};
+                DSortedRouteNames.push_back(RouteName);
+                //DRouteToStops[RouteName] = (SearchStop -> second);
+                //DStopIDToNodeID.push_back(StopRouteID)
+                //std::cout << "DROUTE Values: "<<DRouteToStops[RouteID] <<std::endl;
             }
+            DRouteToStops[RouteName].push_back(StopID);
         }
     }
+    for(auto RouteInfo : DRouteToStops){
+        for(size_t Index = 0; Index + 1 < RouteInfo.second.size(); Index++){
+            auto StartStop = RouteInfo.second[Index];
+            auto EndStop = RouteInfo.second[Index+1];
+            auto StartIndex = DNodeIDToNodeIndex[DStopIDToNodeID[StartStop]];
+            auto EndIndex = DNodeIDToNodeIndex[DStopIDToNodeID[EndStop]];
+            auto EdgePair = std::make_pair(StartIndex, EndIndex);
+            if(DBusEdgeToRouteNames.end() == DBusEdgeToRouteNames.find(EdgePair)){
+                DBusEdgeToRouteNames[EdgePair] = {};
+            }
+            DBusEdgeToRouteNames[EdgePair].push_back(RouteInfo.first);
+        }
+    }
+    for(auto EdgeInfo : DBusEdgeToRouteNames){
+        std::vector<TNodeIndex> Path;
+        TNodeIndex SourceIndex = EdgeInfo.first.first;
+        TNodeIndex DestIndex = EdgeInfo.first.second;
+        double Time = Dijkstras(SourceIndex,DestIndex,Path,'D');
+        DBusEdgeToPath[EdgeInfo.first] = Path;
+        if(EdgesToAdd.end() == EdgesToAdd.find(SourceIndex)){
+            EdgesToAdd[SourceIndex] = {};
+        }
+        SEdge TempEdge;
+        TempEdge.DOtherNodeIndex = DestIndex;
+        TempEdge.DTime = Time + 1/120.0;
+        TempEdge.DDistance = std::numeric_limits<double>::max();
+        TempEdge.DMaxSpeed = 1;
+        EdgesToAdd[SourceIndex].push_back(TempEdge);
+
+    }
+
+    for(auto EdgeInfo: EdgesToAdd){
+        for(auto Edge : EdgeInfo.second){
+            DNodes[EdgeInfo.first].DEdges.push_back(Edge);
+        }
+    }
+
+    std::sort(DSortedRouteNames.begin(),DSortedRouteNames.end());
+    std::sort(DSortNodeIDs.begin(),DSortNodeIDs.end());
     return true;
     //SXMLEntity xmlEntity;
     //xmlReader.ReadEntity(&xmlEntity);
@@ -243,12 +332,12 @@ CMapRouter::TNodeID CMapRouter::GetNodeIDByStopID(TStopID stopid) const{
 }
 
 size_t CMapRouter::RouteCount() const{
-    return DRouteToStopID.size();
+    return DRouteToStops.size();
     
 }
 
 std::string CMapRouter::GetSortedRouteNameByIndex(size_t index) const{
-    auto counter = DRouteToStopID.begin();
+    auto counter = DRouteToStops.begin();
     for(auto i = 0;i < index; i++){
         counter++;
     }
@@ -259,23 +348,23 @@ std::string CMapRouter::GetSortedRouteNameByIndex(size_t index) const{
 bool CMapRouter::GetRouteStopsByRouteName(const std::string &route, std::vector< TStopID > &stops){
     //populate stops with route (A)
     //find Key(route)
-    //DRouteToStopID[A,[20,21,23]]
-    auto Search = DRouteToStopID.find(route);
+    //DRouteToStops[A,[20,21,23]]
+    auto Search = DRouteToStops.find(route);
     //get size of value 
-    auto VectorSize = DRouteToStopID[route].size();
+    auto VectorSize = DRouteToStops[route].size();
     //populate 'stops vector' with value of A [20,21,23] https://stackoverflow.com/questions/4263640/find-mapped-value-of-map
-    if (Search != DRouteToStopID.end()){
+    if (Search != DRouteToStops.end()){
         //loop through vector of values [20,21,23]
         auto RouteValues = Search->second;
         //std::cout << "Route Values: "<<RouteValues[0] <<std::endl;
         //for(auto i : Search->second){
         //    stops.push_back(i.first);
         //}
-        for(auto it = DRouteToStopID.begin();it!=DRouteToStopID.end();it++){
+        for(auto it = DRouteToStops.begin();it!=DRouteToStops.end();it++){
             std::cout << "@ " << __LINE__ << std::endl;
             if(it-> first == route){
                 //stops.push_back(RouteValues);
-                //stops.push_back(DRouteToStopID.second[it]);
+                //stops.push_back(DRouteToStops.second[it]);
                 for(auto iter = 0; iter < VectorSize ;iter++){
                     std::cout << "@ " << __LINE__ << std::endl;
                     stops.push_back(RouteValues[iter]);
@@ -305,7 +394,7 @@ double CMapRouter::FindShortestPath(TNodeID src, TNodeID dest, std::vector< TNod
     //}
     typedef std::pair<double,double> DPair;
     //populate Unvisitednodes
-    std::vector<double> MinDistance(SizeOfMap,INT_MAX);
+    std::vector<double> MinDistance(SizeOfMap,std::numeric_limits<double>::max());
     //[max,max,max,max,max,max]
     //DNode[3]on the first DEdge distance
     MinDistance[SearchSource] = 0;
@@ -370,7 +459,7 @@ double CMapRouter::FindShortestPath(TNodeID src, TNodeID dest, std::vector< TNod
         }  
 
     }
-    return INT_MAX;
+    return std::numeric_limits<double>::max();
 
 
 }
